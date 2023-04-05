@@ -7,7 +7,7 @@ Read about the implementation decisions in blog.
 Link: https://kenluck2001.github.io/blog_post/probing_real-world_cryptosystems.html
 
 The following cryptographic ciphers are implemented:
-- AES 
+- AES (128 bits, 192 bits, 256 bits)
 - DES
 
 The following modes are currently supported.
@@ -18,6 +18,6 @@ The following modes are currently supported.
 + /src
     - This contains the implementations of the cipher, key exchanges, and other protocols
 + /references
-    - Paper that described the algorithm
+    - Papers that described the algorithm
 
 This is an educational pursuit. Thanks.

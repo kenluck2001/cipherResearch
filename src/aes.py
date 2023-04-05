@@ -15,17 +15,14 @@ class Mode(Enum):
 
 class AES:
     """
-        ADVANCED ENCRYPTION STANDARD (AES) on ECB mode
-        Only 128 bit is supported at the moment
+        ADVANCED ENCRYPTION STANDARD (AES) on 128 bits, 192 bits,and 256 bits is supported.
         Reference: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf
     """
     def __init__(self, version = Version.V128, mode = Mode.ECB):
         self.version = version
         self.mode = mode
         Param = namedtuple('Param', ['numOfKeysBits','lenOfKeyAsWords', 'numOfRounds', 'numOfBlocks'])
-        if self.version is not Version.V128:
-            raise NotImplementedError("{} is not yet supported".format(version.name))
-     
+
         # Adding settings
         paramPer128Bits = Param(128, 4, 10, 4)
         paramPer192Bits = Param(192, 6, 12, 4)
@@ -34,17 +31,13 @@ class AES:
         self.ParamDict = {
             Version.V128: paramPer128Bits, 
             Version.V192: paramPer192Bits,
-            Version.V192: paramPer256Bits,
+            Version.V256: paramPer256Bits,
         }
 
     def ConvertAlphabetsToBinary (self, s1):
         '''
             Convert alphabet to binary
         '''
-        #s1str = "".join([chr(ord(c1)) for c1 in s1])
-        #s1str = codecs.encode(s1str, "hex")
-        #s1str = bin(int(s1str, 16))[2:]
-
         asiiLst = [ord(c1) for c1 in s1]
         binString = self.ConvertASCIICodelistToBinary(asiiLst)
         return binString
@@ -132,10 +125,11 @@ class AES:
         txtBinary = self.ConvertAlphabetsToBinary(text)
         txtBinary = txtBinary.zfill(KEY_SIZE)
         print ("txtBinary: {}".format(txtBinary))
-        mat = [[0]* NUM_OF_BLOCK for _ in range (4)]
+        custom_block_size = INPUT_SIZE // 32 # obtain size in word
+        mat = [[0]* custom_block_size for _ in range (4)]
         for objInd, ind in enumerate(range(0, KEY_SIZE, BYTE_SIZE)):
             start, end = ind , (ind + BYTE_SIZE)
-            cRow, cCol = (objInd % 4), (objInd // 4)
+            cRow, cCol = (objInd % 4), (objInd // custom_block_size)
             asciiValue = int(txtBinary[start: end], 2)
             mat[cRow][cCol] = asciiValue
         return mat
@@ -189,6 +183,10 @@ class AES:
         '''
             Apply Key expansion transformation
         '''
+        settings = self.ParamDict[self.version]
+        numOfKeysBits = settings.numOfKeysBits 
+        numOfKeyBlock =  numOfKeysBits // 32
+
         numOfCols = len(mat[0])
         for i in range(numOfCols):
             stateVec = [mat[0][i], mat[1][i], mat[2][i], mat[3][i]]
@@ -218,6 +216,8 @@ class AES:
         '''
             Expand the key
         ''' 
+        settings = self.ParamDict[self.version]
+        numOfKeysBits = settings.numOfKeysBits 
         rConList = self.ObtainRoundConstant(numOfRounds)
         temp = None
         wlist = [[0]*4 for _ in range(numOfBlocks * (numOfRounds+1))] #        Accept key as 2D matrix (column by column)
@@ -305,7 +305,7 @@ class AES:
         numOfRounds = settings.numOfRounds
         numOfBlocks = settings.numOfBlocks
         mat = self.GenerateBlockMatrixFromText (plainText)
-        kmat = self.GenerateBlockMatrixFromText (KeyText)
+        kmat = self.GenerateBlockMatrixFromText (KeyText, INPUT_SIZE = numOfKeysBits)
         wlist = self.KeyExpansion(kmat, lenOfKeyAsWords, numOfRounds, numOfBlocks)
         self.AddRoundKey(mat, wlist, 0, numOfBlocks)
         for cRound in range(1, numOfRounds):
@@ -328,7 +328,7 @@ class AES:
         numOfRounds = settings.numOfRounds
         numOfBlocks = settings.numOfBlocks
         mat = self.GenerateBlockMatrixFromText (cipherText)
-        kmat = self.GenerateBlockMatrixFromText (KeyText)
+        kmat = self.GenerateBlockMatrixFromText (KeyText, INPUT_SIZE = numOfKeysBits)
         wlist = self.KeyExpansion(kmat, lenOfKeyAsWords, numOfRounds, numOfBlocks)
         self.AddRoundKey(mat, wlist, numOfRounds, numOfBlocks)
         for cRound in range(numOfRounds-1, 0, -1):
@@ -347,6 +347,7 @@ class AES:
     def Cipher(self, plainText, KeyText, initVectorString=None):
         '''
             Encryption on group of blocks
+            Note: CBC mode will require a little tweak for 192 bit and 256 bit
         '''
         if self.mode is not Mode.ECB and self.mode is not Mode.CBC:
             raise NotImplementedError("{} is not yet supported".format(self.mode.name))
@@ -394,6 +395,7 @@ class AES:
     def InvCipher(self, cipherText, KeyText, initVectorString=None):
         '''
             Decryption on group of blocks
+            Note: CBC mode will require a little tweak for 192 bit and 256 bit
         '''
         if self.mode is not Mode.ECB and self.mode is not Mode.CBC:
             raise NotImplementedError("{} is not yet supported".format(self.mode.name))
@@ -443,6 +445,10 @@ class AES:
 if __name__ == '__main__':
     plainText = "KENNETHGREATMANX"
     KeyText =   "CALLMEATNOONXXXX"
+
+    ############################################
+    # 128 bits AES
+    ############################################
     aes = AES()
     cipherText = aes.Encrypt(plainText, KeyText)
     print ("cipherText: {}".format(cipherText))
@@ -482,5 +488,28 @@ if __name__ == '__main__':
     print ("cipherText: {}".format(cipherText))
     expectedPlainText = aes.InvCipher(cipherText, KeyText, initVectorString=initVectorString)
     print ("plainText: {}".format(expectedPlainText))
+
+    ############################################
+    # 192 bits AES
+    ############################################
+    plainText = "KENNETHGREATMANX"
+    KeyText =   "CALLMEATNOONXXXXCALLMEAT"
+    aes = AES(version=Version.V192)
+    cipherText = aes.Encrypt(plainText, KeyText)
+    print ("cipherText: {}".format(cipherText))
+    expectedPlainText = aes.Decrypt(cipherText, KeyText)
+    print ("plainText: {}".format(expectedPlainText))
+
+    ############################################
+    # 256 bits AES
+    ############################################
+    plainText = "KENNETHGREATMANX"
+    KeyText =   "CALLMEATNOONXXXXCALLMEATNOONXXXX"
+    aes = AES(version=Version.V256)
+    cipherText = aes.Encrypt(plainText, KeyText)
+    print ("cipherText: {}".format(cipherText))
+    expectedPlainText = aes.Decrypt(cipherText, KeyText)
+    print ("plainText: {}".format(expectedPlainText))
+
 
 
