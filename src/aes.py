@@ -118,10 +118,8 @@ class AES:
         '''
             Accept ciphertext or cleartext as input
         '''
-        settings = self.ParamDict[self.version]
         # size of keys
         KEY_SIZE = INPUT_SIZE   # N_k
-        NUM_OF_BLOCK = settings.numOfBlocks # N_b
         txtBinary = self.ConvertAlphabetsToBinary(text)
         txtBinary = txtBinary.zfill(KEY_SIZE)
         print ("txtBinary: {}".format(txtBinary))
@@ -138,10 +136,8 @@ class AES:
         '''
             Accept 2D matrix and ciphertext or cleartext as output
         '''
-        settings = self.ParamDict[self.version]
         # size of keys
         KEY_SIZE = INPUT_SIZE   # N_k
-        NUM_OF_BLOCK = settings.numOfBlocks # N_b
         resList = []  
         for objInd, _ in enumerate(range(0, KEY_SIZE, BYTE_SIZE)):
             cRow, cCol = (objInd % 4), (objInd // 4)
@@ -347,7 +343,6 @@ class AES:
     def Cipher(self, plainText, KeyText, initVectorString=None):
         '''
             Encryption on group of blocks
-            Note: CBC mode will require a little tweak for 192 bit and 256 bit
         '''
         if self.mode is not Mode.ECB and self.mode is not Mode.CBC:
             raise NotImplementedError("{} is not yet supported".format(self.mode.name))
@@ -395,7 +390,6 @@ class AES:
     def InvCipher(self, cipherText, KeyText, initVectorString=None):
         '''
             Decryption on group of blocks
-            Note: CBC mode will require a little tweak for 192 bit and 256 bit
         '''
         if self.mode is not Mode.ECB and self.mode is not Mode.CBC:
             raise NotImplementedError("{} is not yet supported".format(self.mode.name))
@@ -500,6 +494,21 @@ if __name__ == '__main__':
     expectedPlainText = aes.Decrypt(cipherText, KeyText)
     print ("plainText: {}".format(expectedPlainText))
 
+    plainText = "KENNETHGREATMANPLEASECALLHIMINMYHOUSEKENNETHGREATMANPLEASECALLHIMINMYHOUSE"
+    initVectorString =   "SENDMEHOMENOWXXX"
+
+    aes = AES(version=Version.V192, mode = Mode.ECB)
+    cipherText = aes.Cipher(plainText, KeyText, initVectorString=initVectorString)
+    print ("cipherText: {}".format(cipherText))
+    expectedPlainText = aes.InvCipher(cipherText, KeyText, initVectorString=initVectorString)
+    print ("plainText: {}".format(expectedPlainText))
+
+    aes = AES(version=Version.V192, mode = Mode.CBC)
+    cipherText = aes.Cipher(plainText, KeyText, initVectorString=initVectorString)
+    print ("cipherText: {}".format(cipherText))
+    expectedPlainText = aes.InvCipher(cipherText, KeyText, initVectorString=initVectorString)
+    print ("plainText: {}".format(expectedPlainText))
+
     ############################################
     # 256 bits AES
     ############################################
@@ -509,6 +518,21 @@ if __name__ == '__main__':
     cipherText = aes.Encrypt(plainText, KeyText)
     print ("cipherText: {}".format(cipherText))
     expectedPlainText = aes.Decrypt(cipherText, KeyText)
+    print ("plainText: {}".format(expectedPlainText))
+
+    plainText = "KENNETHGREATMANPLEASECALLHIMINMYHOUSEKENNETHGREATMANPLEASECALLHIMINMYHOUSE"
+    initVectorString =   "SENDMEHOMENOWXXX"
+
+    aes = AES(version=Version.V192, mode = Mode.ECB)
+    cipherText = aes.Cipher(plainText, KeyText, initVectorString=initVectorString)
+    print ("cipherText: {}".format(cipherText))
+    expectedPlainText = aes.InvCipher(cipherText, KeyText, initVectorString=initVectorString)
+    print ("plainText: {}".format(expectedPlainText))
+
+    aes = AES(version=Version.V192, mode = Mode.CBC)
+    cipherText = aes.Cipher(plainText, KeyText, initVectorString=initVectorString)
+    print ("cipherText: {}".format(cipherText))
+    expectedPlainText = aes.InvCipher(cipherText, KeyText, initVectorString=initVectorString)
     print ("plainText: {}".format(expectedPlainText))
 
 

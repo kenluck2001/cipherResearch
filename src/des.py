@@ -489,9 +489,23 @@ if __name__ == '__main__':
     # ECB mode
     plainText = "KENNETHGREATMANPLEASECALLHIMINMYHOUSEKENNETHGREATMANPLEASECALLHIMINMYHOUSE"
     KeyText =   "CALLMEAT"
-    aes = DES(mode = Mode.ECB)
+    initVectorString =   "SENDHOME"
+    des = DES(mode = Mode.ECB)
     cipherText = des.Cipher(plainText, KeyText)
     print ("cipherText: {}".format(cipherText))
-    expectedPlainText = aes.InvCipher(cipherText, KeyText)
+    expectedPlainText = des.InvCipher(cipherText, KeyText)
     print ("plainText: {}".format(expectedPlainText))
+
+    des = DES( mode = Mode.ECB)
+    cipherText = des.Cipher(plainText, KeyText, initVectorString=initVectorString)
+    print ("cipherText: {}".format(cipherText))
+    expectedPlainText = des.InvCipher(cipherText, KeyText, initVectorString=initVectorString)
+    print ("plainText: {}".format(expectedPlainText))
+
+    des = DES(mode = Mode.CBC)
+    cipherText = des.Cipher(plainText, KeyText, initVectorString=initVectorString)
+    print ("cipherText: {}".format(cipherText))
+    expectedPlainText = des.InvCipher(cipherText, KeyText, initVectorString=initVectorString)
+    print ("plainText: {}".format(expectedPlainText))
+
 
