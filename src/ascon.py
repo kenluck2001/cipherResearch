@@ -69,11 +69,11 @@ class ASCON:
         resString = "".join([chr(c1) for c1 in res])
         return resString
 
-    def LeftCircularShift(self, string, n):
+    def RightCircularShift(self, string, n):
         '''
-            Perform left circular shift
+            Perform right circular shift
         '''
-        return string[n:] + string[:n]
+        return string[-n:] + string[:-n]
 
     def VectoredXor(self, vec1, vec2):
         return [(x ^ y) for x, y in zip(vec1, vec2)]
@@ -152,7 +152,6 @@ class ASCON:
         settings = self.ParamDict[self.version]
         a = settings.a 
         b = settings.b
-        c = settings.c
         r = settings.r
         stateBin = self.ConvertVecToBinary(self.stateVec, SET_BYTE_SIZE=WORD_SIZE)    
         stateRBin, stateCBin = stateBin[ : r], stateBin[ r : ]
@@ -166,6 +165,7 @@ class ASCON:
             prefixVec = self.VectoredXor(stateRVec, aDataVec)
             prefixVecBin = self.ConvertVecToBinary(prefixVec, SET_BYTE_SIZE=r)
             stateBin = '{0}{1}'.format(prefixVecBin, stateCBin)
+            # update state
             self.stateVec = self.GenerateVecFromBinaryText(stateBin, SET_BYTE_SIZE=WORD_SIZE)
             self.stateVec = self.Permutate(self.stateVec, a, b, PermuteMode.B)
 
@@ -184,7 +184,6 @@ class ASCON:
         settings = self.ParamDict[self.version]
         a = settings.a 
         b = settings.b
-        c = settings.c
         r = settings.r
         stateBin = self.ConvertVecToBinary(self.stateVec, SET_BYTE_SIZE=WORD_SIZE)    
         stateRBin, stateCBin = stateBin[ : r], stateBin[ r : ]
@@ -199,6 +198,7 @@ class ASCON:
             stateRVec = self.VectoredXor(stateRVec, plainTxtVec)
             stateRBin = self.ConvertVecToBinary(stateRVec, SET_BYTE_SIZE=r)    
             cipherBlockLst.append (stateRBin)
+            # update state
             self.stateVec = self.Permutate(self.stateVec, a, b, PermuteMode.B)
 
         plainTxtVec = [plainTextVec[t-1]]
@@ -210,7 +210,7 @@ class ASCON:
      
         # handle last segment
         l = lengthPlainTxt % r
-        stateRBin = stateRBin[ : l] if l > 0 else stateRBin
+        stateRBin = stateRBin if l == 0 else stateRBin[ : l]
         cipherBlockLst.append (stateRBin)
 
         cipherText = "".join([self.getAlphabetFromBinaryText (textBin) for textBin in cipherBlockLst])
@@ -227,7 +227,6 @@ class ASCON:
         settings = self.ParamDict[self.version]
         a = settings.a 
         b = settings.b
-        c = settings.c
         r = settings.r
         stateBin = self.ConvertVecToBinary(self.stateVec, SET_BYTE_SIZE=WORD_SIZE)    
         stateRBin, stateCBin = stateBin[ : r], stateBin[ r : ]
@@ -245,6 +244,7 @@ class ASCON:
 
             cipherBin = self.ConvertVecToBinary(cipherTxtVec, SET_BYTE_SIZE=r)    
             stateBin = '{0}{1}'.format(cipherBin, stateCBin)
+            # update state
             self.stateVec = self.GenerateVecFromBinaryText(stateBin, SET_BYTE_SIZE=r)
             self.stateVec = self.Permutate(self.stateVec, a, b, PermuteMode.B)
 
@@ -256,7 +256,7 @@ class ASCON:
         plainBlockLst.append (plainBin)
 
         # update state
-        self.stateVec = self.__updateState(r, plainBin)
+        self.stateVec = self.__updateState(r, l, cipherBin)
 
         plainText = "".join([self.getAlphabetFromBinaryText (textBin) for textBin in plainBlockLst])
 
@@ -267,11 +267,11 @@ class ASCON:
             Handle edge case in last segment
             Xor logic and return binary strings
         '''
-        stateRBin = stateRBin[ : l] if l > 0 else stateRBin
+        stateRBin = stateRBin if l == 0 else stateRBin[ : l]
         res = int (stateRBin, 2) ^ int (cipherTextBin, 2)
-        return bin(res)[2: ]
+        return bin(res)[2:].zfill(r - l)
 
-    def __updateState(self, r, plainBin):
+    def __updateState(self, r, l, cipherBin):
         '''
             Handle edge case in last segment
             update state
@@ -279,20 +279,18 @@ class ASCON:
         stateBin = self.ConvertVecToBinary(self.stateVec, SET_BYTE_SIZE=WORD_SIZE)    
         stateRBin, stateCBin = stateBin[ : r], stateBin[ r : ]
 
-        # The spec for the CAESAR is not clear about how to update the state on the last segment of decrypted text. If we concatenated as suggested, we will exceed the 320 bits for state of the cipher. However, there are more details in the NIST spec
+        if l==0:
+            stateBin = '{0}{1}'.format(cipherBin, stateCBin)
+            stateVec = self.GenerateVecFromBinaryText(stateBin, SET_BYTE_SIZE=WORD_SIZE)
 
-        msgLength = len(plainBin)
-        if msgLength == r:
-            stateRState = int (stateRBin, 2) ^ int (plainBin, 2) 
-            stateRBin = bin(stateRState)[2:].zfill(r)    
-            stateBin = '{0}{1}'.format(stateRBin, stateCBin)  
-            stateVec = self.GenerateVecFromBinaryText(stateBin, SET_BYTE_SIZE=WORD_SIZE) 
-            return stateVec
-            
-        msgPaddedBin = '{0}{1}{2}'.format(plainBin, "1", "0" * (r- msgLength - 1))
-        stateRState = int (stateRBin, 2) ^ int (msgPaddedBin, 2)
-        stateRBin = bin(stateRState)[2:].zfill(r)
+            return stateVec      
 
+        # handle unequal length
+        msgPaddedBin = '{0}{1}'.format("1", "0" * (r - l - 1))
+        stateCPState = int (stateRBin[(l - r) :], 2) ^ int (msgPaddedBin, 2)
+        stateCPBin = bin(stateCPState)[2:].zfill(r - l)
+
+        stateRBin = '{0}{1}'.format(cipherBin, stateCPBin)
         stateBin = '{0}{1}'.format(stateRBin, stateCBin)
         stateVec = self.GenerateVecFromBinaryText(stateBin, SET_BYTE_SIZE=WORD_SIZE)
 
@@ -317,9 +315,9 @@ class ASCON:
         paddedKeyBin = '{0}{1}{2}'.format("0" * r, keyTextBin, "0" * (c - keyLength))
         paddedKeyVec = self.GenerateVecFromBinaryText(paddedKeyBin, SET_BYTE_SIZE=WORD_SIZE)
 
-        self.stateVec = self.VectoredXor(self.stateVec, paddedKeyVec)
+        stateVec = self.VectoredXor(self.stateVec, paddedKeyVec)
         # update state
-        self.stateVec = self.Permutate(self.stateVec, a, b, PermuteMode.A)
+        self.stateVec = self.Permutate(stateVec, a, b, PermuteMode.A)
         stateBin = self.ConvertVecToBinary(self.stateVec, SET_BYTE_SIZE=WORD_SIZE)
         stateBinWithkLSB = stateBin[-keyLength : ]
         stateBinWithkLSBVec = self.GenerateVecFromBinaryText(stateBinWithkLSB, SET_BYTE_SIZE=WORD_SIZE)
@@ -335,7 +333,6 @@ class ASCON:
             output: 16 alphabets characters
         '''
         tagVec = self.__getTag(keyText)
-        #print ("GetTag tagVec: {}".format(tagVec))
         tagBin = self.ConvertVecToBinary(tagVec, SET_BYTE_SIZE=WORD_SIZE)
         tagAlphabet = self.ConvertBinaryToAlphabet(tagBin)
 
@@ -350,7 +347,6 @@ class ASCON:
             output: true or false
         '''
         tagVec = self.__getTag(keyText)
-        #print ("VerifyTag tagVec: {}".format(tagVec))
         tagBin = self.ConvertVecToBinary(tagVec, SET_BYTE_SIZE=WORD_SIZE)
         tagAlphabet = self.ConvertBinaryToAlphabet(tagBin)
         print ("tagAlphabet: {}, tagText: {}".format(tagAlphabet, tagText))
@@ -369,10 +365,11 @@ class ASCON:
         textVec = self.GenerateVecFromText(text)
         textBin = self.ConvertVecToBinary(textVec)
         length = len(textBin)
-
+        
         if phase is Phase.DECRYPT:        
             textBinVec = self.GenerateVecFromBinaryText(textBin, SET_BYTE_SIZE=r)
             return textBinVec, length
+
         # Encrypt phase
         suffixPadLen = r - 1 - (length % r)
         textPaddedBin = '{0}{1}{2}'.format(textBin, "1", "0" * suffixPadLen)
@@ -430,17 +427,12 @@ class ASCON:
         self.ProcessAssociatedData(associatedDataText)
         plainText = self.ProcessCipherText(cipherText)
         tagStatus = self.VerifyTag(keyText, tagText)
-        '''
+
         if not tagStatus:
             #raise Exception("MAC (signature matching failed)") 
             print ("There is forgery in the message, signature mismatch")
-            return plainText
-
-        plainText = None
-        '''
+            return None
         return plainText
-
-    ########
 
     def GenerateVecFromText(self, text):
         '''
@@ -511,47 +503,51 @@ class ASCON:
         for val in res:
             outputList.append (bin(val)[2:].zfill(WORD_SIZE))
 
-        curList[0] = res[0] ^ int(self.LeftCircularShift(outputList[0], 19), 2) ^ int(self.LeftCircularShift(outputList[0], 28), 2)
-        curList[1] = res[1] ^ int(self.LeftCircularShift(outputList[1], 61), 2) ^ int(self.LeftCircularShift(outputList[1], 39), 2)
-        curList[2] = res[2] ^ int(self.LeftCircularShift(outputList[2], 1), 2)  ^ int(self.LeftCircularShift(outputList[2], 6), 2)
-        curList[3] = res[3] ^ int(self.LeftCircularShift(outputList[3], 10), 2) ^ int(self.LeftCircularShift(outputList[3], 17), 2)
-        curList[4] = res[4] ^ int(self.LeftCircularShift(outputList[4], 7), 2)  ^ int(self.LeftCircularShift(outputList[4], 41), 2)
+        curList[0] = res[0] ^ int(self.RightCircularShift(outputList[0], 19), 2) ^ int(self.RightCircularShift(outputList[0], 28), 2)
+        curList[1] = res[1] ^ int(self.RightCircularShift(outputList[1], 61), 2) ^ int(self.RightCircularShift(outputList[1], 39), 2)
+        curList[2] = res[2] ^ int(self.RightCircularShift(outputList[2], 1), 2)  ^ int(self.RightCircularShift(outputList[2], 6), 2)
+        curList[3] = res[3] ^ int(self.RightCircularShift(outputList[3], 10), 2) ^ int(self.RightCircularShift(outputList[3], 17), 2)
+        curList[4] = res[4] ^ int(self.RightCircularShift(outputList[4], 7), 2)  ^ int(self.RightCircularShift(outputList[4], 41), 2)
         
         return curList
 
-    def ObtainConstantLayer(self, res, a, b, permMode=PermuteMode.A):
+    def ObtainConstantLayer(self, res, a, b, rnd, permMode=PermuteMode.A):
         '''
             Addition of Constants
             input: 
                 res: 5 elements in list (each element is 64 bits)
                 a, b: integers
+                rnd: round number
             output: 5 element list where each element is 64 bits
         '''
-        N = len(res)
-        constantList = []
-        outputList = [0 for _ in range(N)]
+        ind = 2
+        outputList = [x for x in res]
 
-        for ind in range(N):
-            rA = ind
-            rB = ind + a - b
-            constantList.append ((rA, rB))
-
-        # if permMode is PermuteMode.A
-        outputList[0] = res[0] ^ self.PERMUTATION_CONSTANT[constantList[0][0]]
-        outputList[1] = res[1] ^ self.PERMUTATION_CONSTANT[constantList[1][0]]
-        outputList[2] = res[2] ^ self.PERMUTATION_CONSTANT[constantList[2][0]]
-        outputList[3] = res[3] ^ self.PERMUTATION_CONSTANT[constantList[3][0]]
-        outputList[4] = res[4] ^ self.PERMUTATION_CONSTANT[constantList[4][0]]
-
-        if permMode is PermuteMode.B:
-            outputList = [0 for _ in range(N)]
-            outputList[0] = res[0] ^ self.PERMUTATION_CONSTANT[constantList[0][1]]
-            outputList[1] = res[1] ^ self.PERMUTATION_CONSTANT[constantList[1][1]]
-            outputList[2] = res[2] ^ self.PERMUTATION_CONSTANT[constantList[2][1]]
-            outputList[3] = res[3] ^ self.PERMUTATION_CONSTANT[constantList[3][1]]
-            outputList[4] = res[4] ^ self.PERMUTATION_CONSTANT[constantList[4][1]]
+        if permMode is PermuteMode.A:
+            rA = rnd
+            outputList[ind] = outputList[ind] ^ self.PERMUTATION_CONSTANT[rA]
+        else:
+            rB = rnd + a - b
+            outputList[ind] = outputList[ind] ^ self.PERMUTATION_CONSTANT[rB]
 
         return outputList
+
+    def _permutate(self, res, a, b, permMode):
+        '''
+            SPN-based round transformation
+            input: 
+                res: 5 elements in list (each element is 64 bits)
+                a, b: integers
+            output: 5 element list where each element is 64 bits
+        '''
+        NUMOFROUNDS = a if permMode is PermuteMode.A else b
+        for rnd in range(NUMOFROUNDS):
+            plVec = self.GetDiffLayer(res)
+            psVec = self.GetSubLayer(res)
+            pcVec = self.ObtainConstantLayer(res, a, b, rnd, permMode)
+            res = self.HadamardProductTripletVec(plVec, psVec, pcVec)
+
+        return res
 
     def Permutate(self, res, a, b, permMode):
         '''
@@ -561,14 +557,10 @@ class ASCON:
                 a, b: integers
             output: 5 element list where each element is 64 bits
         '''
-        plVec = self.GetDiffLayer(res)
-        psVec = self.GetSubLayer(res)
-        pcVec = self.ObtainConstantLayer(res, a, b, permMode)
-
-        return self.HadamardProductTripletVec(plVec, psVec, pcVec)
+        return self._permutate(res, a, b, permMode)
 
 if __name__ == '__main__':
-    plainText = "WAITFORMYHOMECOM"
+    plainText = "WAITFORMYHOMECOM" # should be multiples of 16 characters use pkcv7
     keyText = "SAMXSAMXSAMXSAMX"
     nonceText = "JAZZJAZZJAZZJAZZ"
     associatedDataText = "WAITFORMYHOMECOMINGWELOMETOTHEFUTURE"
