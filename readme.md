@@ -9,6 +9,7 @@ Link: https://kenluck2001.github.io/blog_post/probing_real-world_cryptosystems.h
 The following cryptographic ciphers are implemented:
 - AES (128 bits, 192 bits, 256 bits)
 - DES
+- Ascon
 
 The following modes are currently supported.
 - ECB
