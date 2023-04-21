@@ -365,8 +365,10 @@ class ASCON:
         textVec = self.GenerateVecFromText(text)
         textBin = self.ConvertVecToBinary(textVec)
         length = len(textBin)
+
+        paddingNotNeeded = ((length % r) == 0)
         
-        if phase is Phase.DECRYPT:        
+        if phase is Phase.DECRYPT or paddingNotNeeded:        
             textBinVec = self.GenerateVecFromBinaryText(textBin, SET_BYTE_SIZE=r)
             return textBinVec, length
 
@@ -560,13 +562,30 @@ class ASCON:
         return self._permutate(res, a, b, permMode)
 
 if __name__ == '__main__':
-    plainText = "WAITFORMYHOMECOM" # should be multiples of 16 characters use pkcv7
+    #plainText = "WAITFORMYHOMECOM" # should be multiples of 16 characters use pkcv7
+    plainText = "WAITFORM" # should be multiples of 16 characters use pkcv7
     keyText = "SAMXSAMXSAMXSAMX"
     nonceText = "JAZZJAZZJAZZJAZZ"
     associatedDataText = "WAITFORMYHOMECOMINGWELOMETOTHEFUTURE"
     tagText = "DANXDANXDANXDANX"
 
     ascon = ASCON()
+
+    cipherText, tagText = ascon.Encrypt(plainText, keyText, associatedDataText, nonceText)
+    print ("cipherText: {}, tagText: {}".format(cipherText, tagText))
+
+    plainText = ascon.Decrypt(cipherText, keyText, associatedDataText, nonceText, tagText)
+    print ("plainText: {}".format(plainText))
+
+
+    plainText = "WAITFORMYHOMECOM" # should be multiples of 16 characters use pkcv7
+
+    keyText = "SAMXSAMXSAMXSAMX"
+    nonceText = "JAZZJAZZJAZZJAZZ"
+    associatedDataText = "WAITFORMYHOMECOMINGWELOMETOTHEFUTURE"
+    tagText = "DANXDANXDANXDANX"
+
+    ascon = ASCON(version = Version.ASCON128a)
 
     cipherText, tagText = ascon.Encrypt(plainText, keyText, associatedDataText, nonceText)
     print ("cipherText: {}, tagText: {}".format(cipherText, tagText))
