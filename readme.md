@@ -10,6 +10,7 @@ The following cryptographic ciphers are implemented:
 - AES (128 bits, 192 bits, 256 bits)
 - DES
 - Ascon
+- Picnic
 
 The following modes are currently supported.
 - ECB

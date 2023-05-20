@@ -32,7 +32,7 @@ class View:
 class PICNIC:
     """
         Picnic using fiat-shamir transformation only
-        Reference: 
+        Reference: https://github.com/kenluck2001/cipherResearch/blob/main/references/spec-v3.0-picnic.pdf 
     """
     def __init__(self, version = Version.PICNIC_L1_FS):
         self.version = version

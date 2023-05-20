@@ -122,7 +122,6 @@ class AES:
         KEY_SIZE = INPUT_SIZE   # N_k
         txtBinary = self.ConvertAlphabetsToBinary(text)
         txtBinary = txtBinary.zfill(KEY_SIZE)
-        print ("txtBinary: {}".format(txtBinary))
         custom_block_size = INPUT_SIZE // 32 # obtain size in word
         mat = [[0]* custom_block_size for _ in range (4)]
         for objInd, ind in enumerate(range(0, KEY_SIZE, BYTE_SIZE)):
