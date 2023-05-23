@@ -323,7 +323,6 @@ class FRODO:
         num = math.exp(-(x**2)/(2*var))
         return num/denom
 
-
     def ErrorSampingTable (self):
         '''
             calculate cumulative distribution function
@@ -399,6 +398,7 @@ class FRODO:
 
         return eMat
 
+    """
     def FrodoGen (self, seedA):
         '''
             input: 
@@ -426,6 +426,35 @@ class FRODO:
                     start, end = k * 16, (k + 1) * 16
                     curVal = int (cipherBin[start: end][::-1], 2)
                     aMat[i][j+k] = curVal % q
+
+        return aMat
+    """
+
+    def FrodoGen (self, seedA):
+        '''
+            input: 
+                seedA bit string of lenSeed in alphabet
+            output: error matrix (n x n)
+        '''
+        settings = self.ParamDict[self.version]
+        n = settings.n
+        q = settings.q
+        aes = settings.aes
+
+        aMat = [ [0]*n for _ in range(n) ]
+
+        hashSize = 16 * n // 8 # size in bytes
+
+        for i in range(0, n):
+            bBin = "{}{}".format(bin(i)[2:].zfill(16)[::-1], self.ConvertAlphabetsToBinary(seedA))
+            hashTxt = self.getAlphabetFromBinaryText(bBin)
+            hashHex = Shake128().update(hashTxt).hexdigest(hashSize) 
+
+            cipherBin = self.GenerateBinaryTextFromHex(hashHex)    
+            for j in range(0, n):
+                start, end = j * 16, (j + 1) * 16
+                curVal = int (cipherBin[start: end], 2)
+                aMat[i][j] = curVal % q
 
         return aMat
 

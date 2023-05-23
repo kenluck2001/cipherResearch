@@ -11,6 +11,7 @@ The following cryptographic ciphers are implemented:
 - DES
 - Ascon
 - Picnic
+- frodoPKE
 
 The following modes are currently supported.
 - ECB
