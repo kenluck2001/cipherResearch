@@ -12,6 +12,7 @@ The following cryptographic ciphers are implemented:
 - Ascon
 - Picnic
 - frodoPKE
+- deoxys
 
 The following modes are currently supported.
 - ECB
