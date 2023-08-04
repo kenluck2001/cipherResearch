@@ -6,6 +6,10 @@ No attempting was made to perform constant-time cryptography, so timing attack a
 The following cryptographic ciphers are implemented:
 - AES 
 - DES
+- Ascon
+- Picnic
+- FrodoPKE
+- Deoxys
 
 
 The following modes are currently supported.

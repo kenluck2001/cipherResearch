@@ -3,40 +3,19 @@ from enum import Enum
 from aes import AES, Version as aesVersion
 from textProcessing import TEXTHANDLER
 
-class Version(Enum):
-    DEOXYS_I_128_128 = "DEOXYS_I_128_128"
-    DEOXYS_I_256_128 = "DEOXYS_I_256_128"
-    DEOXYS_II_128_128 = "DEOXYS_II_128_128"
-    DEOXYS_II_256_128 = "DEOXYS_II_256_128"
-
 class DEOXYS:
     """
         DEOXYS v1.41
         Reference: https://github.com/kenluck2001/cipherResearch/blob/main/references/deoxysv141.pdf
         Implementation uses padding Pkcv7 padding without using a tweakable cipher, 
         so the nonce is not used. We have essentially ECB with the resulting vulnerabilities.
-
-        For, schemes (paramPerDeoxysII_128x128, paramPerDeoxysII_256x128) only 
-        the computation of the tag is update to make it nonce-misuse resistant
     """
-    def __init__(self, version = Version.DEOXYS_I_128_128):
-        self.version = version
-        Param = namedtuple('Param', ['k', 'l', 'n', 'N', 'r'])
+    def __init__(self):
+        Param = namedtuple('Param', ['n'])
 
         # Adding settings
-        paramPerDeoxysI_128x128  = Param(128, 128, 128,  64, 128)
-        paramPerDeoxysI_256x128  = Param(256, 128, 128,  64, 128)
-        paramPerDeoxysII_128x128  = Param(128, 128, 128,  120, 128)
-        paramPerDeoxysII_256x128  = Param(256, 128, 128,  120, 128)
-
-        self.ParamDict = {
-            Version.DEOXYS_I_128_128: paramPerDeoxysI_128x128, 
-            Version.DEOXYS_I_256_128: paramPerDeoxysI_256x128,
-            Version.DEOXYS_II_128_128: paramPerDeoxysII_128x128, 
-            Version.DEOXYS_II_256_128: paramPerDeoxysII_256x128,
-        }
-
-        self.settings = self.ParamDict[self.version]
+        param  = Param(128)
+        self.settings = param
         self.aes = AES()
     
         self.txtHandler = TEXTHANDLER()
@@ -58,8 +37,6 @@ class DEOXYS:
         s = len(assocDataVec)
         for ind in range(s):
             aDataVec = [assocDataVec[ind]]
-            # TODO add encryption flow here
-
             aDataBin = self.txtHandler.ConvertVecToBinary(aDataVec, SET_BYTE_SIZE=n)    
             aDataText = self.txtHandler.getAlphabetFromBinaryText (aDataBin)
             cipherText = self.aes.Encrypt(aDataText, keyText)
@@ -93,7 +70,6 @@ class DEOXYS:
         for ind in range(t):
             plainTxtVec = [plainTextVec[ind]]
             checksumVec = self.txtHandler.VectoredXor(checksumVec, plainTxtVec)
-            # TODO encrypt and 
             plainTxtBin = self.txtHandler.ConvertVecToBinary(plainTxtVec, SET_BYTE_SIZE=n)    
             pText = self.txtHandler.getAlphabetFromBinaryText (plainTxtBin)
             cipherText = self.aes.Encrypt(pText, keyText)
